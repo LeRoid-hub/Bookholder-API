@@ -3,7 +3,6 @@ package config
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/joho/godotenv"
 )
@@ -38,8 +37,26 @@ func Load() map[string]string {
 		fmt.Println("no environment variables are set")
 		os.Exit(1)
 	}
-	
-	// TODO: check if all the required environment variables are set
+
+	checkDB(env)
 	return env
 }
 
+func checkDB(env map[string]string) {
+	required := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT"}
+	for _, item := range required {
+		checkEnv(item, env)
+	}
+}
+
+func checkEnv(check string, env map[string]string) {
+	if val, ok := env[check]; ok {
+		if val == "" {
+			fmt.Println(check, "is not set")
+			os.Exit(1)
+		}
+	} else {
+		fmt.Println(check, "is not set")
+		os.Exit(1)
+	}
+}
