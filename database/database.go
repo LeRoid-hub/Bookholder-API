@@ -1,5 +1,10 @@
 package database
 
+import (
+	"database/sql"
+	"errors"
+)
+
 type DB struct {
 	Host     string
 	User     string
@@ -8,9 +13,11 @@ type DB struct {
 	Port     string
 }
 
-var database DB
+var (
+	database DB
+)
 
-func SetEnv(env map[string]string) DB {
+func SetEnv(env map[string]string) *DB {
 	var db DB
 
 	db.Host = env["DB_HOST"]
@@ -21,10 +28,54 @@ func SetEnv(env map[string]string) DB {
 
 	database = db
 
-	return db
+	checkDatabase()
+
+	return &db
 }
 
-func connect() {
+func New() (*sql.DB, error) {
+	conn, err := sql.Open("postgres", connect())
+	if err != nil {
+		return nil, err
+	}
+	return conn, nil
+}
+
+func connect() string {
+	return "user=" + database.User + " password=" + database.Password + " dbname=" + database.Name + " sslmode=disable"
+}
+
+func checkDatabase() {
+	conn, err := sql.Open("postgres", "user="+database.User+" password="+database.Password+" dbname=postgres sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	err = conn.QueryRow("SELECT datname FROM pg_database WHERE datname = $1", database.Name).Scan(&database.Name)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			createDatabase()
+		} else {
+			panic(err)
+		}
+	}
+}
+
+func createDatabase() {
+	conn, err := sql.Open("postgres", "user="+database.User+" password="+database.Password+" dbname=postgres sslmode=disable")
+	if err != nil {
+		panic(err)
+	}
+	defer conn.Close()
+
+	_, err = conn.Exec("CREATE DATABASE " + database.Name)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func checkTables() {
 
 }
 
@@ -36,50 +87,173 @@ func updateTables() {
 
 }
 
-func NewAccount() {
+func existAccount(database *sql.DB, id int) (bool, error) {
+	err := database.QueryRow("SELECT id FROM accounts WHERE id = $1", id).Scan(&id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
 
 }
 
-func UpdateAccount() {
+func NewAccount(database *sql.DB, account Account) error {
+	exists, err := existAccount(database, int(account.ID))
+	if err != nil {
+		return err
+	}
+	if exists {
+		return errors.New("account already exists")
+	}
+
+	_, err = database.Exec("INSERT INTO accounts (id, name, kind) VALUES ($1, $2, $3)", account.ID, account.Name, account.Kind)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateAccount(database *sql.DB, account Account) error {
+	_, err := database.Exec("UPDATE accounts SET name = $1, kind = $2 WHERE id = $3", account.Name, account.Kind, account.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func DeleteAccount() {
+func DeleteAccount(database *sql.DB, id int) error {
+	_, err := database.Exec("DELETE FROM accounts WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func GetAccount() {
+func GetAccount(database *sql.DB, id int) (Account, error) {
+	var account Account
+	err := database.QueryRow("SELECT * FROM accounts WHERE id = $1", id).Scan(&account.ID, &account.Name, &account.Kind)
+	if err != nil {
+		return account, err
+	}
+	return account, nil
 
 }
 
-func NewTransaction() {
+func NewTransaction(database *sql.DB, transaction Transaction) error {
+	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, time, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Time, transaction.Description)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func UpdateTransaction() {
+func UpdateTransaction(database *sql.DB, transaction Transaction) error {
+	_, err := database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Time, transaction.Description, transaction.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func DeleteTransaction() {
+func DeleteTransaction(database *sql.DB, id int) error {
+	_, err := database.Exec("DELETE FROM transactions WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func GetTransactions() {
+func GetTransaction(database *sql.DB, id int) (Transaction, error) {
+	var transaction Transaction
+	err := database.QueryRow("SELECT * FROM transactions WHERE id = $1", id).Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Time, &transaction.Description)
+	if err != nil {
+		return transaction, err
+	}
+	return transaction, nil
+}
+
+func GetTransactions(database *sql.DB, account int, year int, month int) ([]Transaction, error) {
+	var transactions []Transaction
+	var row *sql.Rows
+	var err error
+	if year == 0 {
+		return nil, errors.New("year is required")
+	}
+
+	// Extract is probably not used right
+	if month == 0 {
+		row, err = database.Query("SELECT * FROM transactions WHERE account = $1 AND EXTRACT(YEAR FROM time) = $2", account, year)
+	} else {
+		row, err = database.Query("SELECT * FROM transactions WHERE account = $1 AND EXTRACT(YEAR FROM time) = $2 AND EXTRACT(MONTH FROM time) = $3", account, year, month)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	defer row.Close()
+
+	for row.Next() {
+		var transaction Transaction
+		err := row.Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Time, &transaction.Description)
+		if err != nil {
+			return nil, err
+		}
+		transactions = append(transactions, transaction)
+	}
+
+	return transactions, nil
 
 }
 
-func NewUser() {
+func NewUser(database *sql.DB, user User) error {
+	_, err := database.Exec("INSERT INTO users (name, password) VALUES ($1, $2)", user.Name, user.Password)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func UpdateUser() {
+func UpdateUser(database *sql.DB, user User) error {
+	_, err := database.Exec("UPDATE users SET name = $1, password = $2 WHERE id = $3", user.Name, user.Password, user.ID)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func DeleteUser() {
+func DeleteUser(database *sql.DB, id int) error {
+	_, err := database.Exec("DELETE FROM users WHERE id = $1", id)
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
 
-func GetUser() {
+func GetUser(database *sql.DB, id int) (User, error) {
+	var user User
+	err := database.QueryRow("SELECT * FROM users WHERE id = $1", id).Scan(&user.ID, &user.Name, &user.Password)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+}
+
+func AuthenicateUser(database *sql.DB, name string, password string) (User, error) {
+	var user User
+	err := database.QueryRow("SELECT * FROM users WHERE name = $1 AND password = $2", name, password).Scan(&user.ID, &user.Name, &user.Password)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
 
 }

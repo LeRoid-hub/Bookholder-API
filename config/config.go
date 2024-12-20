@@ -10,7 +10,7 @@ import (
 func Load() map[string]string {
 	var env map[string]string = make(map[string]string)
 
-	validEnv := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT"}
+	validEnv := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT", "PORT"}
 
 	envpath := "./.env"
 
@@ -43,9 +43,16 @@ func Load() map[string]string {
 }
 
 func checkDB(env map[string]string) {
-	required := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT"}
+	required := []string{"DB_USER", "DB_PASSWORD", "DB_HOST", "DB_PORT"}
+	optional := []string{"DB_NAME"}
+	defaults := []string{"bookholder"}
 	for _, item := range required {
 		checkEnv(item, env)
+	}
+	for i, item := range optional {
+		if _, ok := env[item]; !ok {
+			env[item] = defaults[i]
+		}
 	}
 }
 

@@ -26,7 +26,7 @@ import (
 
 */
 
-func Run(env map[string]string, db database.DB) {
+func Run(env map[string]string, db *database.DB) {
 	r := gin.Default()
 
 	v1 := r.Group("/v1")
