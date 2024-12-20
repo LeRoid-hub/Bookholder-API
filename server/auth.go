@@ -21,25 +21,25 @@ func createUser(c *gin.Context) {
 	var authInput AuthInput
 
 	if err := c.ShouldBindJSON(&authInput); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var user database.User
 	user, err := database.GetUserByName(Database, authInput.Username)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	if user.ID != 0 {
-		c.JSON(400, gin.H{"error": "User already exists"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
 		return
 	}
 
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(authInput.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -50,7 +50,7 @@ func createUser(c *gin.Context) {
 
 	err = database.NewUser(Database, user)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -61,25 +61,25 @@ func authenticateUser(c *gin.Context) {
 	var authInput AuthInput
 
 	if err := c.ShouldBindJSON(&authInput); err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	var userFound database.User
 	userFound, err := database.GetUserByName(Database, authInput.Username)
 	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	if userFound.ID == 0 {
-		c.JSON(400, gin.H{"error": "User not found"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "User not found"})
 		return
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(userFound.Password), []byte(authInput.Password))
 	if err != nil {
-		c.JSON(400, gin.H{"error": "Invalid password"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid password"})
 		return
 	}
 
@@ -90,7 +90,7 @@ func authenticateUser(c *gin.Context) {
 
 	tokenString, err := generateToken.SignedString([]byte(Env["SECRET"]))
 	if err != nil {
-		c.JSON(400, gin.H{"error": "failed to generate token"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to generate token"})
 		return
 	}
 
