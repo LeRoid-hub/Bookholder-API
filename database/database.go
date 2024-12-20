@@ -8,6 +8,8 @@ type DB struct {
 	Port     string
 }
 
+var database DB
+
 func SetEnv(env map[string]string) DB {
 	var db DB
 
@@ -16,6 +18,8 @@ func SetEnv(env map[string]string) DB {
 	db.Password = env["DB_PASSWORD"]
 	db.Name = env["DB_NAME"]
 	db.Port = env["DB_PORT"]
+
+	database = db
 
 	return db
 }
