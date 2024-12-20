@@ -10,7 +10,7 @@ import (
 func Load() map[string]string {
 	var env map[string]string = make(map[string]string)
 
-	validEnv := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT", "PORT"}
+	validEnv := []string{"DB_USER", "DB_PASSWORD", "DB_NAME", "DB_HOST", "DB_PORT", "PORT", "SECRET"}
 
 	envpath := "./.env"
 
@@ -39,7 +39,20 @@ func Load() map[string]string {
 	}
 
 	checkDB(env)
+	checkSecret(env)
 	return env
+}
+
+func checkSecret(env map[string]string) {
+	if _, ok := env["SECRET"]; !ok {
+		fmt.Println("SECRET is not set")
+		os.Exit(1)
+	}
+
+	if len(env["SECRET"]) < 32 {
+		fmt.Println("SECRET is too short")
+		os.Exit(1)
+	}
 }
 
 func checkDB(env map[string]string) {

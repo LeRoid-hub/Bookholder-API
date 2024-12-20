@@ -187,7 +187,7 @@ func GetTransactions(database *sql.DB, account int, year int, month int) ([]Tran
 		return nil, errors.New("year is required")
 	}
 
-	// Extract is probably not used right
+	// TODO: Extract is probably not used right
 	if month == 0 {
 		row, err = database.Query("SELECT * FROM transactions WHERE account = $1 AND EXTRACT(YEAR FROM time) = $2", account, year)
 	} else {
@@ -246,6 +246,16 @@ func GetUser(database *sql.DB, id int) (User, error) {
 		return user, err
 	}
 	return user, nil
+}
+
+func GetUserByName(database *sql.DB, name string) (User, error) {
+	var user User
+	err := database.QueryRow("SELECT * FROM users WHERE name = $1", name).Scan(&user.ID, &user.Name, &user.Password)
+	if err != nil {
+		return user, err
+	}
+	return user, nil
+
 }
 
 func AuthenicateUser(database *sql.DB, name string, password string) (User, error) {
