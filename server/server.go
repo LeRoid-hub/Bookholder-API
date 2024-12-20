@@ -59,10 +59,10 @@ func Run(env map[string]string, db *database.DB) {
 
 		//User
 		v1.GET("/User/", checkAuth, getUserProfile)
-		v1.POST("/NewUser", createUser, newUser)
+		v1.POST("/NewUser", createUser)
 		v1.POST("/AuthenticateUser", authenticateUser)
-		v1.PUT("/UpdateUser/:UserID", checkAuth, updateUser)
-		v1.DELETE("/DeleteUser/:UserID", checkAuth, deleteUser)
+		v1.PUT("/UpdateUser/:UserID", checkAuth)
+		v1.DELETE("/DeleteUser/:UserID", checkAuth)
 	}
 
 	r.GET("/ping", func(c *gin.Context) {
