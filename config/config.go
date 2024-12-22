@@ -50,7 +50,7 @@ func checkSecret(env map[string]string) {
 	}
 
 	if len(env["SECRET"]) < 32 {
-		fmt.Println("SECRET is too short")
+		fmt.Println("SECRET is too short. The minimum length is 32 characters")
 		os.Exit(1)
 	}
 }

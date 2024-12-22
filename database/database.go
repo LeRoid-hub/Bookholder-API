@@ -3,6 +3,8 @@ package database
 import (
 	"database/sql"
 	"errors"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 type DB struct {
@@ -34,7 +36,7 @@ func SetEnv(env map[string]string) *DB {
 }
 
 func New() (*sql.DB, error) {
-	conn, err := sql.Open("postgres", connect())
+	conn, err := sql.Open("pgx", connect())
 	if err != nil {
 		return nil, err
 	}
@@ -42,11 +44,12 @@ func New() (*sql.DB, error) {
 }
 
 func connect() string {
-	return "user=" + database.User + " password=" + database.Password + " dbname=" + database.Name + " sslmode=disable"
+	return "postgres://" + database.User + ":" + database.Password + "@" + database.Host + ":" + database.Host + "/" + database.Name + "?sslmode=disable"
+	//return "user=" + database.User + " password=" + database.Password + " host=" + database.Host + " dbname=" + database.Name + " sslmode=disable"
 }
 
 func checkDatabase() {
-	conn, err := sql.Open("postgres", "user="+database.User+" password="+database.Password+" dbname=postgres sslmode=disable")
+	conn, err := sql.Open("pgx", "postgres://"+database.User+":"+database.Password+"@"+database.Host+":"+database.Port+"/postgres?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
@@ -63,7 +66,7 @@ func checkDatabase() {
 }
 
 func createDatabase() {
-	conn, err := sql.Open("postgres", "user="+database.User+" password="+database.Password+" dbname=postgres sslmode=disable")
+	conn, err := sql.Open("pgx", "postgres://"+database.User+":"+database.Password+"@"+database.Host+":"+database.Port+"/postgres?sslmode=disable")
 	if err != nil {
 		panic(err)
 	}
