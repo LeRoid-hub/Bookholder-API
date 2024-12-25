@@ -148,7 +148,15 @@ func NewAccount(database *sql.DB, account Account) error {
 }
 
 func UpdateAccount(database *sql.DB, account Account) error {
-	_, err := database.Exec("UPDATE accounts SET name = $1, kind = $2 WHERE id = $3", account.Name, account.Kind, account.ID)
+	exists, err := existAccount(database, int(account.ID))
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("account does not exist")
+	}
+
+	_, err = database.Exec("UPDATE accounts SET name = $1, kind = $2 WHERE id = $3", account.Name, account.Kind, account.ID)
 	if err != nil {
 		return err
 	}
@@ -157,7 +165,15 @@ func UpdateAccount(database *sql.DB, account Account) error {
 }
 
 func DeleteAccount(database *sql.DB, id int) error {
-	_, err := database.Exec("DELETE FROM accounts WHERE id = $1", id)
+	exists, err := existAccount(database, id)
+	if err != nil {
+		return err
+	}
+	if !exists {
+		return errors.New("account does not exist")
+	}
+
+	_, err = database.Exec("DELETE FROM accounts WHERE id = $1", id)
 	if err != nil {
 		return err
 	}
@@ -175,6 +191,18 @@ func GetAccount(database *sql.DB, id int) (Account, error) {
 
 }
 
+func existTransaction(database *sql.DB, id int) (bool, error) {
+	err := database.QueryRow("SELECT id FROM transactions WHERE id = $1", id).Scan(&id)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return false, err
+		}
+		return false, nil
+	}
+	return true, nil
+
+}
+
 func NewTransaction(database *sql.DB, transaction Transaction) error {
 	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, time, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description)
 	if err != nil {
@@ -185,7 +213,15 @@ func NewTransaction(database *sql.DB, transaction Transaction) error {
 }
 
 func UpdateTransaction(database *sql.DB, transaction Transaction) error {
-	_, err := database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description, transaction.ID)
+	exists, err := existTransaction(database, int(transaction.ID))
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return errors.New("transaction already exists")
+	}
+	_, err = database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description, transaction.ID)
 	if err != nil {
 		return err
 	}
@@ -194,7 +230,15 @@ func UpdateTransaction(database *sql.DB, transaction Transaction) error {
 }
 
 func DeleteTransaction(database *sql.DB, id int) error {
-	_, err := database.Exec("DELETE FROM transactions WHERE id = $1", id)
+	exists, err := existTransaction(database, id)
+	if err != nil {
+		return err
+	}
+
+	if !exists {
+		return errors.New("transaction already exists")
+	}
+	_, err = database.Exec("DELETE FROM transactions WHERE id = $1", id)
 	if err != nil {
 		return err
 	}

@@ -41,6 +41,7 @@ func Run(env map[string]string, db *database.DB) {
 
 	r := gin.Default()
 
+	// Index
 	r.GET("/", welcome)
 
 	v1 := r.Group("/v1")
@@ -51,7 +52,7 @@ func Run(env map[string]string, db *database.DB) {
 		//Account
 		v1.GET("/Account/:AccountID", checkAuth, getAccount)
 		v1.POST("/NewAccount", checkAuth, newAccount)
-		v1.PUT("/UpdateAccount/:AccountID", checkAuth, updateAccount)
+		v1.PUT("/UpdateAccount", checkAuth, updateAccount)
 		v1.DELETE("/DeleteAccount/:AccountID", checkAuth, deleteAccount)
 
 		//Transaction
