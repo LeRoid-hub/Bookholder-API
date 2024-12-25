@@ -3,6 +3,8 @@ package database
 import (
 	"database/sql"
 	"errors"
+	"os"
+	"strings"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -17,6 +19,10 @@ type DB struct {
 
 var (
 	database DB
+)
+
+const (
+	SqlFile = "./database/bookholder.sql"
 )
 
 func SetEnv(env map[string]string) *DB {
@@ -44,7 +50,7 @@ func New() (*sql.DB, error) {
 }
 
 func connect() string {
-	return "postgres://" + database.User + ":" + database.Password + "@" + database.Host + ":" + database.Host + "/" + database.Name + "?sslmode=disable"
+	return "postgres://" + database.User + ":" + database.Password + "@" + database.Host + ":" + database.Port + "/" + database.Name + "?sslmode=disable"
 	//return "user=" + database.User + " password=" + database.Password + " host=" + database.Host + " dbname=" + database.Name + " sslmode=disable"
 }
 
@@ -76,6 +82,8 @@ func createDatabase() {
 	if err != nil {
 		panic(err)
 	}
+
+	createTables()
 }
 
 func checkTables() {
@@ -83,6 +91,27 @@ func checkTables() {
 }
 
 func createTables() {
+	sqlFile, err := os.ReadFile(SqlFile)
+	if err != nil {
+		panic(err)
+	}
+
+	sqlStatements := strings.Split(string(sqlFile), ";")
+
+	conn, err := sql.Open("pgx", connect())
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer conn.Close()
+
+	for _, statement := range sqlStatements {
+		_, err := conn.Exec(statement)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 }
 
@@ -147,7 +176,7 @@ func GetAccount(database *sql.DB, id int) (Account, error) {
 }
 
 func NewTransaction(database *sql.DB, transaction Transaction) error {
-	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, time, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Time, transaction.Description)
+	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, time, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description)
 	if err != nil {
 		return err
 	}
@@ -156,7 +185,7 @@ func NewTransaction(database *sql.DB, transaction Transaction) error {
 }
 
 func UpdateTransaction(database *sql.DB, transaction Transaction) error {
-	_, err := database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Time, transaction.Description, transaction.ID)
+	_, err := database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description, transaction.ID)
 	if err != nil {
 		return err
 	}
@@ -175,7 +204,7 @@ func DeleteTransaction(database *sql.DB, id int) error {
 
 func GetTransaction(database *sql.DB, id int) (Transaction, error) {
 	var transaction Transaction
-	err := database.QueryRow("SELECT * FROM transactions WHERE id = $1", id).Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Time, &transaction.Description)
+	err := database.QueryRow("SELECT * FROM transactions WHERE id = $1", id).Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Date, &transaction.Description)
 	if err != nil {
 		return transaction, err
 	}
@@ -204,7 +233,7 @@ func GetTransactions(database *sql.DB, account int, year int, month int) ([]Tran
 
 	for row.Next() {
 		var transaction Transaction
-		err := row.Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Time, &transaction.Description)
+		err := row.Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Date, &transaction.Description)
 		if err != nil {
 			return nil, err
 		}

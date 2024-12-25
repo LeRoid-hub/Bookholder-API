@@ -14,7 +14,7 @@ type Transaction struct {
 	Debit         bool
 	OffsetAccount uint
 	Account       uint
-	Time          time.Time
+	Date          time.Time
 	Description   string
 }
 

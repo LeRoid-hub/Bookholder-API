@@ -41,8 +41,13 @@ func Run(env map[string]string, db *database.DB) {
 
 	r := gin.Default()
 
+	r.GET("/", welcome)
+
 	v1 := r.Group("/v1")
 	{
+		//Welcome
+		v1.GET("/", welcome)
+
 		//Account
 		v1.GET("/Account/:AccountID", checkAuth, getAccount)
 		v1.POST("/NewAccount", checkAuth, newAccount)
@@ -76,4 +81,10 @@ func Run(env map[string]string, db *database.DB) {
 	} else {
 		r.Run(":8080")
 	}
+}
+
+func welcome(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"message": "Welcome to Bookholder API",
+	})
 }
