@@ -12,6 +12,13 @@ import (
 func getAccount(c *gin.Context) {
 	id := c.Param("AccountID")
 
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "invalid id; must be an integer",
+		})
+		return
+	}
+
 	idInt, err := strconv.Atoi(id)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -61,6 +68,13 @@ func newAccount(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"message": "invalid json",
+		})
+		return
+	}
+
+	if acc.ID < 1 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"message": "invalid id; must be greater than 0",
 		})
 		return
 	}
