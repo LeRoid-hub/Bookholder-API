@@ -1,1 +1,40 @@
-EXAMPLE COMPOSE
+services:
+  api:
+    container_name: bookholder-api
+    image: ghcr.io/leroid-hub/bookholder-api:latest
+    restart: always
+    depends_on:
+      - db
+    enviroment:
+      DB_USER: dbuser
+      DB_PASSWORD: dbpassword
+      DB_NAME: bookholder # Database name - optinal default is bookholder
+      DB_HOST: db
+      DB_PORT: 5432
+      PORT: 8080 # Port to run the api - optinal default is 8080 
+      SECRET: secret_key_for_jwt_token_needs_to_be_at_least_32_characters
+    networks:
+      - bookholder-network
+    ports:
+      - 8080:8080
+  db:
+    container_name: postgres_container
+    image: postgres:17
+    restart: always
+    environment:
+      POSTGRES_USER: dbuser
+      POSTGRES_PASSWORD: dbpassword
+      POSTGRES_DB: bookholder # Database name - optinal
+    volumes:
+      - bookholder-db:/var/lib/postgresql
+      - bookholder-db:/home
+    networks:
+      - bookholder-network
+
+volumes:
+  bookholder-db:
+
+networks:
+  bookholder-network:
+    driver: bridge
+ 
