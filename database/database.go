@@ -132,6 +132,7 @@ func existAccount(database *sql.DB, id int) (bool, error) {
 }
 
 func NewAccount(database *sql.DB, account Account) error {
+
 	exists, err := existAccount(database, int(account.ID))
 	if err != nil {
 		return err
@@ -140,10 +141,11 @@ func NewAccount(database *sql.DB, account Account) error {
 		return errors.New("account already exists")
 	}
 
-	_, err = database.Exec("INSERT INTO accounts (id, name, kind) VALUES ($1, $2, $3)", account.ID, account.Name, account.Kind)
+	_, err = database.Exec("INSERT INTO accounts (id, name, kind) VALUES ($1, $2, $3)", int(account.ID), string(account.Name), account.Kind)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -160,8 +162,8 @@ func UpdateAccount(database *sql.DB, account Account) error {
 	if err != nil {
 		return err
 	}
-	return nil
 
+	return nil
 }
 
 func DeleteAccount(database *sql.DB, id int) error {
@@ -185,10 +187,12 @@ func GetAccount(database *sql.DB, id int) (Account, error) {
 	var account Account
 	err := database.QueryRow("SELECT * FROM accounts WHERE id = $1", id).Scan(&account.ID, &account.Name, &account.Kind)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return account, errors.New("account does not exist")
+		}
 		return account, err
 	}
 	return account, nil
-
 }
 
 func existTransaction(database *sql.DB, id int) (bool, error) {
@@ -204,7 +208,19 @@ func existTransaction(database *sql.DB, id int) (bool, error) {
 }
 
 func NewTransaction(database *sql.DB, transaction Transaction) error {
-	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, time, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description)
+	if transaction.OffsetAccount == transaction.Account {
+		return errors.New("offset account and account cannot be the same")
+	}
+
+	if transaction.Amount == 0 {
+		return errors.New("amount cannot be 0")
+	}
+
+	if transaction.Date.IsZero() {
+		return errors.New("date is required")
+	}
+
+	_, err := database.Exec("INSERT INTO transactions (amount, debit, offset_account, account, date, description) VALUES ($1, $2, $3, $4, $5, $6)", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description)
 	if err != nil {
 		return err
 	}
@@ -221,7 +237,7 @@ func UpdateTransaction(database *sql.DB, transaction Transaction) error {
 	if !exists {
 		return errors.New("transaction already exists")
 	}
-	_, err = database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, time = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description, transaction.ID)
+	_, err = database.Exec("UPDATE transactions SET amount = $1, debit = $2, offset_account = $3, account = $4, date = $5, description = $6 WHERE id = $7", transaction.Amount, transaction.Debit, transaction.OffsetAccount, transaction.Account, transaction.Date, transaction.Description, transaction.ID)
 	if err != nil {
 		return err
 	}
@@ -248,7 +264,7 @@ func DeleteTransaction(database *sql.DB, id int) error {
 
 func GetTransaction(database *sql.DB, id int) (Transaction, error) {
 	var transaction Transaction
-	err := database.QueryRow("SELECT * FROM transactions WHERE id = $1", id).Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Date, &transaction.Description)
+	err := database.QueryRow("SELECT id, amount, debit, offset_account, account, date, description FROM transactions WHERE id = $1", id).Scan(&transaction.ID, &transaction.Amount, &transaction.Debit, &transaction.OffsetAccount, &transaction.Account, &transaction.Date, &transaction.Description)
 	if err != nil {
 		return transaction, err
 	}
@@ -263,11 +279,10 @@ func GetTransactions(database *sql.DB, account int, year int, month int) ([]Tran
 		return nil, errors.New("year is required")
 	}
 
-	// TODO: Extract is probably not used right
 	if month == 0 {
-		row, err = database.Query("SELECT * FROM transactions WHERE account = $1 AND EXTRACT(YEAR FROM time) = $2", account, year)
+		row, err = database.Query("SELECT id, amount, debit, offset_account, account, date, description FROM transactions WHERE (account = $1 OR offset_account = $1) AND EXTRACT(YEAR FROM date) = $2", account, year)
 	} else {
-		row, err = database.Query("SELECT * FROM transactions WHERE account = $1 AND EXTRACT(YEAR FROM time) = $2 AND EXTRACT(MONTH FROM time) = $3", account, year, month)
+		row, err = database.Query("SELECT id, amount, debit, offset_account, account, date, description FROM transactions WHERE (account = $1 OR offset_account = $1) AND EXTRACT(YEAR FROM date) = $2 AND EXTRACT(MONTH FROM date) = $3", account, year, month)
 	}
 	if err != nil {
 		return nil, err
@@ -306,7 +321,7 @@ func UpdateUser(database *sql.DB, user User) error {
 
 }
 
-func DeleteUser(database *sql.DB, id int) error {
+func DeleteUser(database *sql.DB, id string) error {
 	_, err := database.Exec("DELETE FROM users WHERE id = $1", id)
 	if err != nil {
 		return err
@@ -315,7 +330,7 @@ func DeleteUser(database *sql.DB, id int) error {
 
 }
 
-func GetUser(database *sql.DB, id int) (User, error) {
+func GetUser(database *sql.DB, id string) (User, error) {
 	var user User
 	err := database.QueryRow("SELECT * FROM users WHERE id = $1", id).Scan(&user.ID, &user.Name, &user.Password)
 	if err != nil {
@@ -334,7 +349,7 @@ func GetUserByName(database *sql.DB, name string) (User, error) {
 
 }
 
-func AuthenicateUser(database *sql.DB, name string, password string) (User, error) {
+func AuthenticateUser(database *sql.DB, name string, password string) (User, error) {
 	var user User
 	err := database.QueryRow("SELECT * FROM users WHERE name = $1 AND password = $2", name, password).Scan(&user.ID, &user.Name, &user.Password)
 	if err != nil {

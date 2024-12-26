@@ -37,7 +37,7 @@ func getAccount(c *gin.Context) {
 	acc, err := database.GetAccount(Database, idInt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"message": "internal server error",
+			"message": "internal server error" + err.Error(),
 		})
 		return
 	}

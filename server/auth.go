@@ -32,7 +32,7 @@ func createUser(c *gin.Context) {
 		return
 	}
 
-	if user.ID != 0 {
+	if user.ID != "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User already exists"})
 		return
 	}
@@ -72,7 +72,7 @@ func authenticateUser(c *gin.Context) {
 		return
 	}
 
-	if userFound.ID == 0 {
+	if userFound.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "User not found"})
 		return
 	}
@@ -145,14 +145,14 @@ func checkAuth(c *gin.Context) {
 		return
 	}
 
-	user, err := database.GetUser(Database, int(claims["id"].(float64)))
+	user, err := database.GetUser(Database, string(claims["id"].(string)))
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	if user.ID == 0 {
+	if user.ID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return

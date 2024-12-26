@@ -19,7 +19,7 @@ type Transaction struct {
 }
 
 type User struct {
-	ID       uint
+	ID       string
 	Name     string
 	Password string
 }
